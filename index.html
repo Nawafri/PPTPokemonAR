@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- MindAR -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <script>
+        AFRAME.registerComponent("quiz-manager", {
+            init: function () {
+                // =========================
+                // 1. QUIZ DATA
+                // =========================
+                this.questions = [
+                    { q: "A wild Luxray appears!\nAttack or run?", storyPokemon: "story-luxray", a: { label: "Attack", type: "attack" }, b: { label: "Run away", type: "speed" } },
+                    { q: "Bidoof challenges you!\nOffensive or defensive?", storyPokemon: "story-bidoof", a: { label: "Offensive", type: "attack" }, b: { label: "Defensive", type: "defense" } },
+                    { q: "Stunky appears!\nRun or stay calm?", storyPokemon: "story-stunky", a: { label: "Run away", type: "speed" }, b: { label: "I'm not a threat", type: "defense" } },
+                    { q: "Togekiss offers a biome.\nWhere to?", storyPokemon: "story-togekiss", a: { label: "Grassland", type: "attack" }, b: { label: "Cave or Shore", type: "defense" } }
+                ];
+
+                this.index = 0;
+                this.score = { attack: 0, defense: 0, speed: 0 };
+
+                // =========================
+                // 2. ELEMENT REFERENCES
+                // =========================
+                this.question = this.el.querySelector("#question");
+                this.btnA = this.el.querySelector("#btnA");
+                this.btnB = this.el.querySelector("#btnB");
+                this.txtA = this.el.querySelector("#txtA");
+                this.txtB = this.el.querySelector("#txtB");
+                // =========================
+                // ADDITION: vraag tekst stijl
+                // =========================
+                this.question.setAttribute("color", "#000000");
+                // =========================
+                // ADDITION: antwoord tekst stijl
+                // =========================
+                this.txtA.setAttribute("color", "#000000");
+                this.txtB.setAttribute("color", "#000000");
+                this.battleBtn = document.querySelector("#battleBtn");
+                this.battleBorder = document.querySelector("#battleBorder");
+                this.battleText = document.querySelector("#battleText");
+
+                this.pokemonModel = this.el.querySelector("#end-pokemon");
+                this.shadow = this.el.querySelector("#shadow");
+                this.titleBox = this.el.querySelector("#titleBox");
+                this.titleBorder = this.el.querySelector("#titleBorder");
+                this.statsBox = this.el.querySelector("#statsBox");
+                this.statsBorder = this.el.querySelector("#statsBorder");
+                this.pokemonTitle = this.el.querySelector("#pokemonTitle");
+                this.statLine1 = this.el.querySelector("#statLine1");
+                this.statLine2 = this.el.querySelector("#statLine2");
+                this.statLine3 = this.el.querySelector("#statLine3");
+                this.statLine4 = this.el.querySelector("#statLine4");
+                this.descLine1 = this.el.querySelector("#descLine1");
+                this.descLine2 = this.el.querySelector("#descLine2");
+                this.descLine3 = this.el.querySelector("#descLine3");
+
+
+                this.storyPokemons = ["story-luxray", "story-bidoof", "story-stunky", "story-togekiss"];
+                this.update();
+
+                // =========================
+                // 3. LOAD POKEMON API
+                // =========================
+                this.pokemonList = [];
+                this.loadPokemon();
+                this.clickSound = document.querySelector("#clickSound");
+
+
+                // =========================
+                // 4. MOUSE CLICK RAYCAST
+                // =========================
+                document.addEventListener("click", (event) => {
+                    const camEl = document.querySelector("a-camera");
+                    const camera = camEl.getObject3D("camera");
+                    if (!camera) return;
+                    const mouse = new THREE.Vector2(
+                        (event.clientX / window.innerWidth) * 2 - 1,
+                        -(event.clientY / window.innerHeight) * 2 + 1
+                    );
+                    const raycaster = new THREE.Raycaster();
+                    raycaster.setFromCamera(mouse, camera);
+                    const targets = [
+                        this.btnA.object3D,
+                        this.btnB.object3D
+                    ];
+
+                    if (this.battleBtn && this.battleBtn.getAttribute("visible") === true) {
+                        targets.push(this.battleBtn.object3D);
+                    }
+
+                    const hits = raycaster.intersectObjects(targets, true);
+
+                    if (hits.length > 0) {
+                        if (this.clickSound) {
+                            this.clickSound.currentTime = 0;
+                            this.clickSound.volume = 0.8;
+                            this.clickSound.play();
+                        }
+
+                        const hitEl = hits[0].object.parent.el;
+
+                        if (hitEl.id === "btnA") {
+                            this.answer("a");
+                        }
+                        else if (hitEl.id === "btnB") {
+                            this.answer("b");
+                        }
+                        else if (hitEl.id === "battleBtn") {
+                            hitEl.emit("battle-click");
+                        }
+
+                    }
+
+                });
+            },
+
+            loadPokemon: async function () {
+                const res = await fetch("https://pokeapi.co/api/v2/pokemon?limit=50");
+                const data = await res.json();
+                for (const p of data.results) {
+                    const detail = await fetch(p.url).then(r => r.json());
+                    this.pokemonList.push(detail);
+                }
+            },
+
+            update: function () {
+                const q = this.questions[this.index];
+                this.question.setAttribute("value", q.q);
+                this.txtA.setAttribute("value", q.a.label);
+                this.txtB.setAttribute("value", q.b.label);
+
+                this.storyPokemons.forEach(id => {
+                    const el = this.el.querySelector(`#${id}`);
+                    if (el) el.setAttribute("visible", false);
+                });
+                const active = this.el.querySelector(`#${q.storyPokemon}`);
+                if (active) active.setAttribute("visible", true);
+
+                // Verberg eindpokemon en boxen tijdens vragen
+                this.pokemonModel.setAttribute("visible", false);
+                this.shadow.setAttribute("visible", false);
+                this.titleBox.setAttribute("visible", false);
+                this.titleBorder.setAttribute("visible", false);
+
+                this.statsBox.setAttribute("visible", false);
+                this.statsBorder.setAttribute("visible", false);
+                this.pokemonTitle.setAttribute("visible", false);
+                this.descLine1.setAttribute("visible", false);
+                this.descLine2.setAttribute("visible", false);
+                this.descLine3.setAttribute("visible", false);
+                this.statLine1.setAttribute("visible", false);
+                this.statLine2.setAttribute("visible", false);
+                this.statLine3.setAttribute("visible", false);
+                this.statLine4.setAttribute("visible", false);
+            },
+
+            answer: function (key) {
+                const choice = this.questions[this.index][key];
+                this.score[choice.type]++;
+                this.index++;
+                if (this.index < this.questions.length) {
+                    this.update();
+                } else {
+                    this.finishQuiz();
+                }
+            },
+
+            finishQuiz: function () {
+                this.storyPokemons.forEach(id => {
+                    const el = this.el.querySelector(`#${id}`);
+                    if (el) el.setAttribute("visible", false);
+                });
+
+                const victorySound = document.querySelector("#victorySound");
+
+                if (victorySound) {
+                    victorySound.currentTime = 0;
+                    victorySound.volume = 0.7;
+                    victorySound.play();
+                }
+
+                const bestStat = Object.keys(this.score).reduce((a, b) => this.score[a] > this.score[b] ? a : b);
+                const filtered = this.pokemonList.filter(p => {
+                    if (bestStat === "attack") return p.stats[1].base_stat > 80;
+                    if (bestStat === "defense") return p.stats[2].base_stat > 80;
+                    if (bestStat === "speed") return p.stats[5].base_stat > 80;
+                });
+                const chosen = filtered[Math.floor(Math.random() * filtered.length)];
+
+                // Sprite en shadow
+                this.pokemonModel.setAttribute("src", chosen.sprites.front_default);
+                this.pokemonModel.setAttribute("scale", "1.5 1.5 1.5");
+                this.pokemonModel.setAttribute("position", "0 0 0.2");
+                this.pokemonModel.setAttribute("visible", true);
+                this.shadow.setAttribute("visible", true);
+
+                // TITLE + DESCRIPTION
+                this.titleBox.setAttribute("visible", true);
+                this.titleBorder.setAttribute("visible", true);
+
+                this.pokemonTitle.setAttribute("value", `You're ${chosen.name}!`);
+                this.pokemonTitle.setAttribute("visible", true);
+
+                const typeNames = chosen.types.map(t => t.type.name).join(", ");
+                const moves = chosen.moves.slice(0, 3).map(m => m.move.name).join(", ");
+                this.descLine1.setAttribute("value", `Type: ${typeNames}`);
+                this.descLine2.setAttribute("value", `Moves: ${moves}`);
+                this.descLine3.setAttribute("value", `Ready for battle!`);
+
+                this.descLine1.setAttribute("visible", true);
+                this.descLine2.setAttribute("visible", true);
+                this.descLine3.setAttribute("visible", true);
+
+                // STATS
+                const statsText =
+                    `HP: ${chosen.stats[0].base_stat}<br>` +
+                    `Attack: ${chosen.stats[1].base_stat}<br>` +
+                    `Defense: ${chosen.stats[2].base_stat}<br>` +
+                    `Speed: ${chosen.stats[5].base_stat}`;
+                this.statsBox.setAttribute("visible", true);
+                this.statsBox.setAttribute("visible", true);
+                this.statsBorder.setAttribute("visible", true);
+
+                this.statLine1.setAttribute(
+                    "value", `HP: ${chosen.stats[0].base_stat}`
+                );
+                this.statLine2.setAttribute(
+                    "value", `Attack: ${chosen.stats[1].base_stat}`
+                );
+                this.statLine3.setAttribute(
+                    "value", `Defense: ${chosen.stats[2].base_stat}`
+                );
+                this.statLine4.setAttribute(
+                    "value", `Speed: ${chosen.stats[5].base_stat}`
+                );
+
+                this.statLine1.setAttribute("visible", true);
+                this.statLine2.setAttribute("visible", true);
+                this.statLine3.setAttribute("visible", true);
+                this.statLine4.setAttribute("visible", true);
+
+                // Toon battle knop na quiz
+                this.battleBtn.setAttribute("visible", true);
+                this.battleBorder.setAttribute("visible", true);
+
+
+
+                // Verberg knoppen
+                this.btnA.setAttribute("visible", false);
+                this.btnB.setAttribute("visible", false);
+            }
+        });
+    </script>
+
+    <script>
+        AFRAME.registerComponent("hide-quiz-ui-on-finish", {
+            init: function () {
+                this.hidden = false;
+            },
+            tick: function () {
+                if (this.hidden) return;
+
+                const endPokemon = document.querySelector("#end-pokemon");
+                if (!endPokemon || endPokemon.getAttribute("visible") !== true) return;
+
+                [
+                    "question",
+                    "questionBg",
+                    "questionBorder",
+                    "btnA",
+                    "btnABg",
+                    "btnABorder",
+                    "btnB",
+                    "btnBBg",
+                    "btnBBorder"
+                ].forEach(id => {
+                    const el = document.querySelector(`#${id}`);
+                    if (el) el.setAttribute("visible", false);
+                });
+
+                this.hidden = true;
+            }
+        });
+
+    </script>
+
+    <script>
+        AFRAME.registerComponent("audio-unlock", {
+            init: function () {
+                const unlock = () => {
+                    const scene = this.el.sceneEl;
+                    if (scene.audioUnlocked) return;
+                    scene.audioUnlocked = true;
+                };
+
+                window.addEventListener("mousedown", unlock, { once: true });
+                window.addEventListener("touchstart", unlock, { once: true });
+            }
+        });
+    </script>
+
+    <script>
+        AFRAME.registerComponent("battle-manager", {
+            init: function () {
+                this.btn = this.el;
+                this.player = document.querySelector("#player-battle-pokemon");
+                this.enemy = document.querySelector("#enemy-pokemon");
+                this.endPokemon = document.querySelector("#end-pokemon");
+
+                this.jumpCount = 0;
+                this.isBattling = false;
+
+                // Wacht tot eind-pokemon zichtbaar is
+                this.observer = new MutationObserver(() => {
+                    if (this.endPokemon.getAttribute("visible") === true) {
+                        this.btn.setAttribute("visible", true);
+                    }
+                });
+
+                this.observer.observe(this.endPokemon, {
+                    attributes: true,
+                    attributeFilter: ["visible"]
+                });
+
+                this.el.addEventListener("battle-click", () => {
+                    if (this.isBattling) return;
+                    this.startBattle();
+                });
+
+            },
+
+            startBattle: function () {
+                this.isBattling = true;
+                this.jumpCount = 0;
+
+                // Verberg eindpokemon (result screen)
+                this.endPokemon.setAttribute("visible", false);
+
+                // Player links positioneren
+                this.player.setAttribute("src", this.endPokemon.getAttribute("src"));
+                this.player.setAttribute("position", "-0.9 0 0.2");
+                this.player.setAttribute("visible", true);
+
+                // Enemy rechts
+                const enemyId = Math.floor(Math.random() * 150) + 1;
+                this.enemy.setAttribute(
+                    "src",
+                    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${enemyId}.png`
+                );
+                this.enemy.setAttribute("position", "0.9 0 0.2");
+                this.enemy.setAttribute("visible", true);
+
+                this.jump();
+            },
+
+
+            jump: function () {
+                if (this.jumpCount >= 3) {
+                    this.finishBattle();
+                    return;
+                }
+
+                this.animateJump(this.player, -0.9);
+                this.animateJump(this.enemy, 0.9);
+
+                this.jumpCount++;
+                setTimeout(() => this.jump(), 600);
+            },
+
+            animateJump: function (el, xPos) {
+                // Reset vorige animaties
+                el.removeAttribute("animation__up");
+                el.removeAttribute("animation__down");
+
+                // Force reflow (belangrijk!)
+                el.object3D.position.y = 0;
+
+                // Omhoog
+                el.setAttribute("animation__up", {
+                    property: "position",
+                    to: `${xPos} 0.3 0.2`,
+                    dur: 200,
+                    easing: "easeOutQuad"
+                });
+
+                // Omlaag
+                el.setAttribute("animation__down", {
+                    property: "position",
+                    to: `${xPos} 0 0.2`,
+                    dur: 200,
+                    delay: 200,
+                    easing: "easeInQuad"
+                });
+            },
+
+
+            finishBattle: function () {
+                // Enemy verliest
+                this.enemy.setAttribute("animation", {
+                    property: "scale",
+                    to: "0 0 0",
+                    dur: 400,
+                    easing: "easeInBack"
+                });
+
+                setTimeout(() => {
+                    this.enemy.setAttribute("visible", false);
+                    this.btn.setAttribute("visible", false);
+                    this.isBattling = false;
+                }, 500);
+            }
+        });
+    </script>
+
+
+</head>
+
+<body>
+    <a-scene audio-unlock
+        mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
+        vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false">
+        <a-camera></a-camera>
+
+        <a-light type="ambient" intensity="1.2"></a-light>
+        <a-light type="directional" intensity="1" position="1 2 1">
+        </a-light>
+
+
+        <a-assets>
+            <audio id="clickSound" src="assets/audio/click.mp3"></audio>
+            <audio id="victorySound" src="assets/audio/victory.mp3"></audio>
+
+            <!-- Pokémon 3D models -->
+            <a-assets>
+                <a-asset-item id="luxrayModel" src="assets/models/luxray/luxray.gltf"></a-asset-item>
+                <a-asset-item id="bidoofModel" src="assets/models/bidoof/bidoof.gltf"></a-asset-item>
+                <a-asset-item id="stunkyModel" src="assets/models/stunky/stunky.gltf"></a-asset-item>
+                <a-asset-item id="togekissModel" src="assets/models/togekiss/togekiss.gltf"></a-asset-item>
+            </a-assets>
+
+
+        </a-assets>
+
+        <a-entity mindar-image-target="targetIndex:0" quiz-manager hide-question-on-finish hide-quiz-ui-on-finish>
+
+            <!-- Vraag achtergrond (wit) -->
+            <a-plane id="questionBg" position="0 0.45 -0.01" width="2.2" height="0.5" color="#FFFFFF"
+                material="shader:flat; side:double"></a-plane>
+
+            <!-- Vraag border (Pokémon blauw) -->
+            <a-plane id="questionBorder" position="0 0.45 -0.02" width="2.3" height="0.55" color="#2A75BB"
+                material="shader:flat; side:double"></a-plane>
+
+
+            <!-- Vraag -->
+            <a-text id="question" position=" 0 0.45 0" align="center" width="2"></a-text>
+
+            <!-- Button A border -->
+            <a-plane id="btnABorder" position="-0.4 -0.2 -0.02" width="0.72" height="0.30" color="#2A75BB"
+                material="shader:flat; side:double">
+            </a-plane>
+
+            <!-- Button A background -->
+            <a-plane id="btnABg" position="-0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
+                material="shader:flat; side:double">
+            </a-plane>
+
+            <!-- Button B border -->
+            <a-plane id="btnBBorder" position="0.4 -0.2 -0.02" width="0.72" height="0.30" color="#2A75BB"
+                material="shader:flat; side:double">
+            </a-plane>
+
+            <!-- Button B background -->
+            <a-plane id="btnBBg" position="0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
+                material="shader:flat; side:double">
+            </a-plane>
+
+
+            <!-- Buttons -->
+            <a-plane id="btnA" play-click-sound position="-0.4 -0.2 0" width="0.6" height="0.25"
+                material="transparent:true; opacity:0">
+                <a-text id="txtA" position="0 0 0.01" align="center" width="1.5" color="white"></a-text>
+            </a-plane>
+            <a-plane id="btnB" play-click-sound position="0.4 -0.2 0" width="0.6" height="0.25"
+                material="transparent:true; opacity:0">
+                <a-text id="txtB" position="0 0 0.01" align="center" width="1.5" color="white"></a-text>
+            </a-plane>
+
+            <!-- Story Pokémon placeholders -->
+            <a-gltf-model id="story-luxray" src="#luxrayModel" position="1.1 -0.5 0.15" scale="0.08 0.08 0.08"
+                rotation="0 330 0" visible="true" animation__idle="property: position;
+                     to: 1.1 -0.2 0.15;
+                     dir: alternate;
+                     dur: 2800;
+                     easing: easeInOutSine;
+                     loop: true">
+            </a-gltf-model>
+
+            <a-gltf-model id="story-bidoof" src="#bidoofModel" position="1.1 -0.5 0.15" scale="0.1 0.1 0.1"
+                rotation="0 330 0" visible="false" animation__idle="property: position;
+                     to: 1.1 -0.2 0.15;
+                     dir: alternate;
+                     dur: 3000;
+                     easing: easeInOutSine;
+                     loop: true">
+            </a-gltf-model>
+
+            <a-gltf-model id="story-stunky" src="#stunkyModel" position="1.1 -0.5 0.15" scale="1 1 1" rotation="0 330 0"
+                visible="false" animation__idle="property: position;
+                     to: 1.1 -0.2 0.15;
+                     dir: alternate;
+                     dur: 3200;
+                     easing: easeInOutSine;
+                     loop: true">
+            </a-gltf-model>
+
+            <a-gltf-model id="story-togekiss" src="#togekissModel" position="1.1 0 0.15" scale="0.09 0.09 0.09"
+                rotation="0 330 0" visible="false" animation__idle="property: position;
+                     to: 1.1 0.2 0.15;
+                     dir: alternate;
+                     dur: 3500;
+                     easing: easeInOutSine;
+                     loop: true">
+            </a-gltf-model>
+
+
+            <!-- Victory audio: los, stabiel, NIET in MindAR object -->
+            <a-entity id="victoryAudio" sound="src:#victorySound; autoplay:false; volume:0.7">
+            </a-entity>
+
+            <!-- Eind Pokémon -->
+            <a-image id="end-pokemon" position="0 0 0.2" scale="1.5 1.5 1.5" visible="false">
+            </a-image>
+
+            <a-plane id="battleBorder" position="1.25 0.05 0.04" width="1.1" height="0.35" color="#2A75BB"
+                renderOrder="1" material="shader:flat" visible="false">
+            </a-plane>
+
+            <a-plane id="battleBtn" position="1.25 0.05 0.05" width="0.98" height="0.28" color="#FFFFFF" renderOrder="2"
+                material="shader:flat" visible="false" battle-manager>
+                <a-text id="battleText" align="center" anchor="center" baseline="middle" position="0 0 0.01"
+                    color="#2A75BB" width="2">
+                </a-text>
+            </a-plane>
+
+            <!-- Tegenstander Pokémon -->
+            <a-image id="enemy-pokemon" position="0.9 0 0.2" scale="1.3 1.3 1.3" visible="false">
+            </a-image>
+            <!-- Battle versie van speler Pokémon -->
+            <a-image id="player-battle-pokemon" position="-0.9 0 0.2" scale="1.3 1.3 1.3" visible="false">
+            </a-image>
+
+            <a-plane id="shadow" rotation="-90 0 0" width="2" height="2" color="#000" opacity="0.3" visible="false">
+            </a-plane>
+
+
+            <!-- Boxes -->
+            <!-- Border eerst én vóór in Z -->
+            <a-plane id="titleBorder" position="0 1.15 0.03" width="3.0" height="1.1" color="#2A75BB"
+                material="shader:flat; depthTest:false" visible="false">
+            </a-plane>
+
+            <!-- Box iets erachter -->
+            <a-plane id="titleBox" position="0 1.15 0.02" width="2.9" height="1.0" color="#FFFFFF"
+                material="shader:flat" visible="false">
+            </a-plane>
+
+            <a-plane id="statsBorder" position="-1.25 0.05 0.04" width="1.05" height="0.8" color="#2A75BB"
+                material="shader:flat; depthTest:false" visible="false">
+            </a-plane>
+
+            <a-plane id="statsBox" position="-1.25 0.05 0.03" width="0.98" height="0.72" color="#FFFFFF"
+                material="shader:flat" visible="false">
+            </a-plane>
+
+            <!-- Texts -->
+            <a-text id="pokemonTitle" position="0 1.42 0.05" align="center" anchor="center" baseline="top" width="2.5"
+                line-height="1.1" color="#F7D02C" outline-color="#2A75BB" outline-width="1.5" visible="false">
+            </a-text>
+            <a-text id="descLine1" position="0 1.12 0.05" align="center" anchor="center" baseline="top" width="2.1"
+                line-height="1.7" color="#000000" visible="false"></a-text>
+            <a-text id="descLine2" position="0 1.05 0.05" align="center" anchor="center" baseline="top" width="2.1"
+                line-height="1.7" color="#000000" visible="false"></a-text>
+            <a-text id="descLine3" position="0 0.98 0.05" align="center" anchor="center" baseline="top" width="2.1"
+                line-height="1.7" color="#000000" visible="false"></a-text>
+
+            <a-text id="statLine1" position="-1.25 0.32 0.05" align="left" anchor="left" baseline="top" width="0.85"
+                line-height="2.0" color="#000000" visible="false"></a-text>
+
+            <a-text id="statLine2" position="-1.25 0.24 0.05" align="left" anchor="left" baseline="top" width="0.85"
+                line-height="2.0" color="#000000" visible="false"></a-text>
+
+            <a-text id="statLine3" position="-1.25 0.16 0.05" align="left" anchor="left" baseline="top" width="0.85"
+                line-height="2.0" color="#000000" visible="false"></a-text>
+
+            <a-text id="statLine4" position="-1.25 0.08 0.05" align="left" anchor="left" baseline="top" width="0.85"
+                line-height="2.0" color="#000000" visible="false"></a-text>
+
+
+
+        </a-entity>
+    </a-scene>
+</body>
+
+</html>
