@@ -59,7 +59,14 @@
                 this.descLine1 = this.el.querySelector("#descLine1");
                 this.descLine2 = this.el.querySelector("#descLine2");
                 this.descLine3 = this.el.querySelector("#descLine3");
+                this.playAgainBtn = document.querySelector("#playAgainBtn");
+                this.playAgainBorder = document.querySelector("#playAgainBorder");
+                this.playAgainText = document.querySelector("#playAgainText");
 
+
+                this.el.sceneEl.addEventListener("battle-finished", () => {
+                    this.returnToEndPokemon();
+                });
 
                 this.storyPokemons = ["story-luxray", "story-bidoof", "story-stunky", "story-togekiss"];
                 this.update();
@@ -93,6 +100,10 @@
                     if (this.battleBtn && this.battleBtn.getAttribute("visible") === true) {
                         targets.push(this.battleBtn.object3D);
                     }
+                    if (this.playAgainBtn && this.playAgainBtn.getAttribute("visible") === true) {
+                        targets.push(this.playAgainBtn.object3D);
+                    }
+
 
                     const hits = raycaster.intersectObjects(targets, true);
 
@@ -114,6 +125,10 @@
                         else if (hitEl.id === "battleBtn") {
                             hitEl.emit("battle-click");
                         }
+                        else if (hitEl.id === "playAgainBtn") {
+                            this.resetQuiz();
+                        }
+
 
                     }
 
@@ -141,6 +156,23 @@
                 });
                 const active = this.el.querySelector(`#${q.storyPokemon}`);
                 if (active) active.setAttribute("visible", true);
+
+                // Toon quiz UI opnieuw
+                [
+                    "#question",
+                    "#questionBg",
+                    "#questionBorder",
+                    "#btnA",
+                    "#btnABg",
+                    "#btnABorder",
+                    "#btnB",
+                    "#btnBBg",
+                    "#btnBBorder"
+                ].forEach(sel => {
+                    const el = this.el.querySelector(sel);
+                    if (el) el.setAttribute("visible", true);
+                });
+
 
                 // Verberg eindpokemon en boxen tijdens vragen
                 this.pokemonModel.setAttribute("visible", false);
@@ -211,7 +243,7 @@
                 const moves = chosen.moves.slice(0, 3).map(m => m.move.name).join(", ");
                 this.descLine1.setAttribute("value", `Type: ${typeNames}`);
                 this.descLine2.setAttribute("value", `Moves: ${moves}`);
-                this.descLine3.setAttribute("value", `Ready for battle!`);
+                this.descLine3.setAttribute("value", `You're brave, hardhearted and ready for battle!`);
 
                 this.descLine1.setAttribute("visible", true);
                 this.descLine2.setAttribute("visible", true);
@@ -249,12 +281,67 @@
                 this.battleBtn.setAttribute("visible", true);
                 this.battleBorder.setAttribute("visible", true);
 
-
-
                 // Verberg knoppen
                 this.btnA.setAttribute("visible", false);
                 this.btnB.setAttribute("visible", false);
+            },
+
+            returnToEndPokemon: function () {
+                // Kleine pauze voor rust
+                setTimeout(() => {
+                    this.pokemonModel.setAttribute("visible", true);
+                    this.pokemonModel.setAttribute("position", "0 0 0.2");
+
+                    // Toon Play Again knop
+                    this.playAgainBtn.setAttribute("visible", true);
+                    this.playAgainBorder.setAttribute("visible", true);
+                    this.playAgainText.setAttribute("value", "Play Again");
+
+                }, 800);
+            },
+
+            resetQuiz: function () {
+                // Reset state
+                this.index = 0;
+                this.score = { attack: 0, defense: 0, speed: 0 };
+
+                // Verberg eindscherm
+                this.pokemonModel.setAttribute("visible", false);
+                this.titleBox.setAttribute("visible", false);
+                this.titleBorder.setAttribute("visible", false);
+                this.statsBox.setAttribute("visible", false);
+                this.statsBorder.setAttribute("visible", false);
+                this.battleBtn.setAttribute("visible", false);
+                this.battleBorder.setAttribute("visible", false);
+                this.playAgainBtn.setAttribute("visible", false);
+                this.playAgainBorder.setAttribute("visible", false);
+
+
+                [
+                    this.pokemonTitle,
+                    this.descLine1,
+                    this.descLine2,
+                    this.descLine3,
+                    this.statLine1,
+                    this.statLine2,
+                    this.statLine3,
+                    this.statLine4
+                ].forEach(el => el.setAttribute("visible", false));
+
+                // Verberg Play Again
+                this.playAgainBtn.setAttribute("visible", false);
+                this.playAgainBorder.setAttribute("visible", false);
+
+                // Toon antwoord knoppen weer
+                this.btnA.setAttribute("visible", true);
+                this.btnB.setAttribute("visible", true);
+
+                // Start opnieuw
+                this.update();
+                this.el.sceneEl.emit("quiz-reset");
+
             }
+
         });
     </script>
 
@@ -262,7 +349,12 @@
         AFRAME.registerComponent("hide-quiz-ui-on-finish", {
             init: function () {
                 this.hidden = false;
+
+                this.el.sceneEl.addEventListener("quiz-reset", () => {
+                    this.hidden = false;
+                });
             },
+
             tick: function () {
                 if (this.hidden) return;
 
@@ -287,6 +379,7 @@
                 this.hidden = true;
             }
         });
+
 
     </script>
 
@@ -411,8 +504,13 @@
 
                 setTimeout(() => {
                     this.enemy.setAttribute("visible", false);
+                    this.player.setAttribute("visible", false);
                     this.btn.setAttribute("visible", false);
                     this.isBattling = false;
+
+                    // battle-finished event
+                    this.el.sceneEl.emit("battle-finished");
+
                 }, 500);
             }
         });
@@ -557,6 +655,17 @@
             </a-image>
 
             <a-plane id="shadow" rotation="-90 0 0" width="2" height="2" color="#000" opacity="0.3" visible="false">
+            </a-plane>
+
+            <a-plane id="playAgainBorder" position="0 -0.6 0.04" width="1.3" height="0.35" color="#2A75BB"
+                material="shader:flat" visible="false">
+            </a-plane>
+
+            <a-plane id="playAgainBtn" position="0 -0.6 0.05" width="1.2" height="0.28" color="#FFFFFF"
+                material="shader:flat" visible="false">
+                <a-text id="playAgainText" value="" align="center" anchor="center" baseline="middle" position="0 0 0.01"
+                    color="#2A75BB" width="2">
+                </a-text>
             </a-plane>
 
 
