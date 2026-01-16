@@ -13,20 +13,20 @@
             init: function () {
 
                 // =========================
-                // 1. QUIZ DATA
+                // Quiz data
                 // =========================
                 this.questions = [
-                    { q: "A wild Luxray appears!\nAttack or run?", storyPokemon: "story-luxray", a: { label: "Attack", type: "attack" }, b: { label: "Run away", type: "speed" } },
-                    { q: "Bidoof challenges you!\nOffensive or defensive?", storyPokemon: "story-bidoof", a: { label: "Offensive", type: "attack" }, b: { label: "Defensive", type: "defense" } },
-                    { q: "Stunky appears!\nRun or stay calm?", storyPokemon: "story-stunky", a: { label: "Run away", type: "speed" }, b: { label: "I'm not a threat", type: "defense" } },
-                    { q: "Togekiss offers a biome.\nWhere to?", storyPokemon: "story-togekiss", a: { label: "Grassland", type: "attack" }, b: { label: "Cave or Shore", type: "defense" } }
+                    { q: "Luxray questions if you want to spar?\nSpar or Go away?", storyPokemon: "story-luxray", a: { label: "Spar", type: "attack" }, b: { label: "Go away", type: "defense" } },
+                    { q: "Bidoof wants to race with you!\nRace till the tree?", storyPokemon: "story-bidoof", a: { label: "Race", type: "speed" }, b: { label: "Hide", type: "defense" } },
+                    { q: "Stunky feels threatened!\nRun or stay calm?", storyPokemon: "story-stunky", a: { label: "Run away", type: "speed" }, b: { label: "I'm not a threat", type: "defense" } },
+                    { q: "Togekiss offers a biome to hatch.\nWhere to?", storyPokemon: "story-togekiss", a: { label: "Grassland", type: "attack" }, b: { label: "Cave or Shore", type: "defense" } }
                 ];
 
                 this.index = 0;
                 this.score = { attack: 0, defense: 0, speed: 0 };
 
                 // =========================
-                // 2. ELEMENT REFERENCES
+                // Referenties
                 // =========================
                 this.question = this.el.querySelector("#question");
                 this.btnA = this.el.querySelector("#btnA");
@@ -34,11 +34,11 @@
                 this.txtA = this.el.querySelector("#txtA");
                 this.txtB = this.el.querySelector("#txtB");
                 // =========================
-                // ADDITION: vraag tekst stijl
+                // Vraag tekst stijl
                 // =========================
                 this.question.setAttribute("color", "#000000");
                 // =========================
-                // ADDITION: antwoord tekst stijl
+                // Antwoord tekst stijl
                 // =========================
                 this.txtA.setAttribute("color", "#000000");
                 this.txtB.setAttribute("color", "#000000");
@@ -67,7 +67,7 @@
                 this.startPikachu = this.el.querySelector("#startPikachu");
 
                 // =========================
-                // SAFE INITIAL VISIBILITY RESET
+                // RESET
                 // =========================
                 this.hideAllUI = () => {
                     [
@@ -128,7 +128,7 @@
 
 
                 // =========================
-                // 3. LOAD POKEMON API
+                // PokeAPI
                 // =========================
                 this.pokemonList = [];
                 this.loadPokemon();
@@ -136,7 +136,7 @@
 
 
                 // =========================
-                // 4. MOUSE CLICK RAYCAST
+                // Raycaster
                 // =========================
                 document.addEventListener("click", (event) => {
                     const camEl = document.querySelector("a-camera");
@@ -362,7 +362,7 @@
                 this.pokemonModel.setAttribute("visible", true);
                 this.shadow.setAttribute("visible", true);
 
-                // TITLE + DESCRIPTION
+                // Titel en beschrijving
                 this.titleBox.setAttribute("visible", true);
                 this.titleBorder.setAttribute("visible", true);
 
@@ -379,7 +379,7 @@
                 this.descLine2.setAttribute("visible", true);
                 this.descLine3.setAttribute("visible", true);
 
-                // STATS
+                // Stats
                 const statsText =
                     `HP: ${chosen.stats[0].base_stat}<br>` +
                     `Attack: ${chosen.stats[1].base_stat}<br>` +
@@ -577,7 +577,7 @@
                 // Verberg eindpokemon (result screen)
                 this.endPokemon.setAttribute("visible", false);
 
-                // Player links positioneren
+                // Player links 
                 this.player.setAttribute("src", this.endPokemon.getAttribute("src"));
                 this.player.setAttribute("position", "-0.9 0 0.2");
                 this.player.setAttribute("visible", true);
@@ -613,7 +613,7 @@
                 el.removeAttribute("animation__up");
                 el.removeAttribute("animation__down");
 
-                // Force reflow (belangrijk!)
+                // Force reflow (!!belangrijk animatie werkend houden)
                 el.object3D.position.y = 0;
 
                 // Omhoog
@@ -689,7 +689,7 @@
         </a-assets>
 
         <a-entity mindar-image-target="targetIndex:0" quiz-manager hide-question-on-finish hide-quiz-ui-on-finish>
-            <!-- START SCREEN -->
+            <!-- Startscherm -->
             <a-entity id="startScreen">
 
                 <!-- Titel -->
@@ -719,7 +719,7 @@
             <a-plane id="questionBg" position="0 0.45 -0.01" width="2.2" height="0.5" color="#FFFFFF"
                 material="shader:flat; side:double" visible="false"></a-plane>
 
-            <!-- Vraag border (Pokémon blauw) -->
+            <!-- Vraag border (blauw) -->
             <a-plane id="questionBorder" position="0 0.45 -0.02" width="2.3" height="0.55" color="#2A75BB"
                 material="shader:flat; side:double" visible="false"></a-plane>
 
@@ -732,7 +732,7 @@
                 material="shader:flat; side:double" visible="false">
             </a-plane>
 
-            <!-- Button A background -->
+            <!-- Button A achtergrond -->
             <a-plane id="btnABg" position="-0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
                 material="shader:flat; side:double" visible="false">
             </a-plane>
@@ -742,7 +742,7 @@
                 material="shader:flat; side:double" visible="false">
             </a-plane>
 
-            <!-- Button B background -->
+            <!-- Button B achtergrond -->
             <a-plane id="btnBBg" position="0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
                 material="shader:flat; side:double" visible="false">
             </a-plane>
@@ -758,7 +758,7 @@
                 <a-text id="txtB" position="0 0 0.01" align="center" width="1.5" color="white" visible="false"></a-text>
             </a-plane>
 
-            <!-- Story Pokémon placeholders -->
+            <!-- Story Pokémon -->
             <a-gltf-model id="story-luxray" src="#luxrayModel" position="1.1 -0.5 0.15" scale="0.08 0.08 0.08"
                 rotation="0 330 0" visible="false" animation__idle="property: position;
                      to: 1.1 -0.2 0.15;
@@ -796,7 +796,7 @@
             </a-gltf-model>
 
 
-            <!-- Victory audio: los, stabiel, NIET in MindAR object -->
+            <!-- Victory audio -->
             <a-entity id="victoryAudio" sound="src:#victorySound; autoplay:false; volume:0.7">
             </a-entity>
 
@@ -838,12 +838,12 @@
 
 
             <!-- Boxes -->
-            <!-- Border eerst én vóór in Z -->
+            <!-- Border eerst én voor in Z!!!! -->
             <a-plane id="titleBorder" position="0 1.15 0.03" width="3.0" height="1.1" color="#2A75BB"
                 material="shader:flat; depthTest:false" visible="false">
             </a-plane>
 
-            <!-- Box iets erachter -->
+            <!-- Box erachter -->
             <a-plane id="titleBox" position="0 1.15 0.02" width="2.9" height="1.0" color="#FFFFFF"
                 material="shader:flat" visible="false">
             </a-plane>
