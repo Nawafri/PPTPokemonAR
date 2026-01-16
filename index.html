@@ -805,15 +805,15 @@
             </a-image>
 
             <a-plane id="battleBorder" position="1.25 0.05 0.04" width="1.1" height="0.35" color="#2A75BB"
-                renderOrder="1" material="shader:flat" visible="false">
+                renderOrder="1" material="shader:flat; visible=" false">
             </a-plane>
 
             <a-plane id="battleBtn" position="1.25 0.05 0.05" width="0.98" height="0.28" color="#FFFFFF" renderOrder="2"
-                material="shader:flat" visible="false" battle-manager>
-                <a-text id="battleText" align="center" anchor="center" baseline="middle" position="0 0 0.01"
-                    color="#2A75BB" width="2">
-                </a-text>
+                material="shader:flat; visible=" false" battle-manager>
             </a-plane>
+            <a-text id="battleText" align="center" anchor="center" baseline="middle" position="0 0 0.01" color="#2A75BB"
+                width="2">
+            </a-text>
 
             <!-- Tegenstander Pokémon -->
             <a-image id="enemy-pokemon" position="0.9 0 0.2" scale="1.3 1.3 1.3" visible="false">
@@ -826,11 +826,11 @@
             </a-plane>
 
             <a-plane id="playAgainBorder" position="0 -0.6 0.04" width="1.3" height="0.35" color="#2A75BB"
-                material="shader:flat" visible="false">
+                material="shader:flat; depthTest:false" visible="false">
             </a-plane>
 
             <a-plane id="playAgainBtn" position="0 -0.6 0.05" width="1.2" height="0.28" color="#FFFFFF"
-                material="shader:flat" visible="false">
+                material="shader:flat; depthTest:false" visible="false">
                 <a-text id="playAgainText" value="" align="center" anchor="center" baseline="middle" position="0 0 0.01"
                     color="#2A75BB" width="2">
                 </a-text>
