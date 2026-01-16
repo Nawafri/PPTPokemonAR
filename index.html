@@ -11,6 +11,7 @@
     <script>
         AFRAME.registerComponent("quiz-manager", {
             init: function () {
+
                 // =========================
                 // 1. QUIZ DATA
                 // =========================
@@ -62,6 +63,55 @@
                 this.playAgainBtn = document.querySelector("#playAgainBtn");
                 this.playAgainBorder = document.querySelector("#playAgainBorder");
                 this.playAgainText = document.querySelector("#playAgainText");
+                this.startScreen = document.querySelector("#startScreen");
+                this.startPikachu = this.el.querySelector("#startPikachu");
+
+                // =========================
+                // SAFE INITIAL VISIBILITY RESET
+                // =========================
+                this.hideAllUI = () => {
+                    [
+                        "#question",
+                        "#questionBg",
+                        "#questionBorder",
+                        "#btnA",
+                        "#btnABg",
+                        "#btnABorder",
+                        "#btnB",
+                        "#btnBBg",
+                        "#btnBBorder",
+                        "#txtA",
+                        "#txtB",
+                        "#battleBtn",
+                        "#battleBorder",
+                        "#playAgainBtn",
+                        "#playAgainBorder",
+                        "#end-pokemon",
+                        "#shadow",
+                        "#titleBox",
+                        "#titleBorder",
+                        "#statsBox",
+                        "#statsBorder",
+                        "#pokemonTitle",
+                        "#descLine1",
+                        "#descLine2",
+                        "#descLine3",
+                        "#statLine1",
+                        "#statLine2",
+                        "#statLine3",
+                        "#statLine4",
+                        "#story-luxray",
+                        "#story-bidoof",
+                        "#story-stunky",
+                        "#story-togekiss"
+                    ].forEach(sel => {
+                        const el = this.el.querySelector(sel);
+                        if (el) el.setAttribute("visible", false);
+                    });
+                };
+
+                // Voer één keer uit bij start
+                this.hideAllUI();
 
 
                 this.el.sceneEl.addEventListener("battle-finished", () => {
@@ -69,7 +119,13 @@
                 });
 
                 this.storyPokemons = ["story-luxray", "story-bidoof", "story-stunky", "story-togekiss"];
-                this.update();
+                this.gameState = "start";
+                this.showStartScreen();
+                this.el.sceneEl.addEventListener("start-game", () => {
+                    this.startGame();
+                });
+
+
 
                 // =========================
                 // 3. LOAD POKEMON API
@@ -92,15 +148,21 @@
                     );
                     const raycaster = new THREE.Raycaster();
                     raycaster.setFromCamera(mouse, camera);
-                    const targets = [
-                        this.btnA.object3D,
-                        this.btnB.object3D
-                    ];
+                    const targets = [];
 
-                    if (this.battleBtn && this.battleBtn.getAttribute("visible") === true) {
+                    if (this.gameState === "quiz") {
+                        targets.push(this.btnA.object3D, this.btnB.object3D);
+                    }
+
+                    if (this.gameState === "start" && this.startPikachu) {
+                        targets.push(this.startPikachu.object3D);
+                    }
+
+                    if (this.battleBtn && this.battleBtn.getAttribute("visible")) {
                         targets.push(this.battleBtn.object3D);
                     }
-                    if (this.playAgainBtn && this.playAgainBtn.getAttribute("visible") === true) {
+
+                    if (this.playAgainBtn && this.playAgainBtn.getAttribute("visible")) {
                         targets.push(this.playAgainBtn.object3D);
                     }
 
@@ -114,7 +176,15 @@
                             this.clickSound.play();
                         }
 
-                        const hitEl = hits[0].object.parent.el;
+                        let hitEl = hits[0].object.el;
+                        while (hitEl && !hitEl.id) {
+                            hitEl = hitEl.parentEl;
+                        }
+
+                        if (hitEl.id === "startPikachu") {
+                            this.el.sceneEl.emit("start-game");
+                        }
+
 
                         if (hitEl.id === "btnA") {
                             this.answer("a");
@@ -144,7 +214,67 @@
                 }
             },
 
+            showStartScreen: function () {
+                this.startScreen.setAttribute("visible", true);
+
+                // Verberg ALLE quiz UI
+                [
+                    "#question",
+                    "#questionBg",
+                    "#questionBorder",
+                    "#btnA",
+                    "#btnABg",
+                    "#btnABorder",
+                    "#btnB",
+                    "#btnBBg",
+                    "#btnBBorder"
+                ].forEach(sel => {
+                    const el = this.el.querySelector(sel);
+                    if (el) el.setAttribute("visible", false);
+                });
+
+                // Verberg story Pokémon
+                this.storyPokemons.forEach(id => {
+                    const el = this.el.querySelector(`#${id}`);
+                    if (el) el.setAttribute("visible", false);
+                });
+            },
+
+
+            startGame: function () {
+                this.gameState = "quiz";
+                this.index = 0;
+                this.startScreen.setAttribute("visible", false);
+
+                // Toon quiz UI
+                this.btnA.setAttribute("visible", true);
+                this.btnB.setAttribute("visible", true);
+                this.question.setAttribute("visible", true);
+                this.txtA.setAttribute("visible", true);
+                this.txtB.setAttribute("visible", true);
+
+
+                this.update();
+                [
+                    "#btnA",
+                    "#btnABg",
+                    "#btnABorder",
+                    "#btnB",
+                    "#btnBBg",
+                    "#btnBBorder",
+                    "#txtA",
+                    "#txtB"
+                ].forEach(sel => {
+                    const el = this.el.querySelector(sel);
+                    if (el) el.setAttribute("visible", true);
+                });
+
+            },
+
+
             update: function () {
+                if (this.gameState !== "quiz") return;
+
                 const q = this.questions[this.index];
                 this.question.setAttribute("value", q.q);
                 this.txtA.setAttribute("value", q.a.label);
@@ -337,7 +467,8 @@
                 this.btnB.setAttribute("visible", true);
 
                 // Start opnieuw
-                this.update();
+                this.gameState = "start";
+                this.showStartScreen();
                 this.el.sceneEl.emit("quiz-reset");
 
             }
@@ -397,6 +528,17 @@
             }
         });
     </script>
+
+    <script>
+        AFRAME.registerComponent("start-button", {
+            init: function () {
+                this.el.addEventListener("click", () => {
+                    this.el.sceneEl.emit("start-game");
+                });
+            }
+        });
+    </script>
+
 
     <script>
         AFRAME.registerComponent("battle-manager", {
@@ -540,59 +682,85 @@
                 <a-asset-item id="bidoofModel" src="assets/models/bidoof/bidoof.gltf"></a-asset-item>
                 <a-asset-item id="stunkyModel" src="assets/models/stunky/stunky.gltf"></a-asset-item>
                 <a-asset-item id="togekissModel" src="assets/models/togekiss/togekiss.gltf"></a-asset-item>
+                <a-asset-item id="pikachuModel" src="assets/models/pikachu/pikachu.gltf"></a-asset-item>
             </a-assets>
 
 
         </a-assets>
 
         <a-entity mindar-image-target="targetIndex:0" quiz-manager hide-question-on-finish hide-quiz-ui-on-finish>
+            <!-- START SCREEN -->
+            <a-entity id="startScreen">
+
+                <!-- Titel -->
+                <a-text id="startTitle" value="Which Pokémon are you?" position="0 0.6 0.1" align="center" width="3"
+                    color="#F7D02C" outline-color="#2A75BB" outline-width="2">
+                </a-text>
+
+                <!-- Subtekst -->
+                <a-text id="startSubtitle" value="Click on the pokéball to start!" position="0 0.35 0.1" align="center"
+                    width="2.5" color="#000000">
+                </a-text>
+
+                <!-- Pikachu met Pokéball -->
+                <a-gltf-model id="startPikachu" src="#pikachuModel" position="0 -0.5 0.15" scale="5 5 5"
+                    rotation="0 0 0" start-button animation__idle="property: position;
+            to: 0 -0.5 0.15;
+            dir: alternate;
+            dur: 2800;
+            easing: easeInOutSine;
+            loop: true">
+                </a-gltf-model>
+
+            </a-entity>
+
 
             <!-- Vraag achtergrond (wit) -->
             <a-plane id="questionBg" position="0 0.45 -0.01" width="2.2" height="0.5" color="#FFFFFF"
-                material="shader:flat; side:double"></a-plane>
+                material="shader:flat; side:double" visible="false"></a-plane>
 
             <!-- Vraag border (Pokémon blauw) -->
             <a-plane id="questionBorder" position="0 0.45 -0.02" width="2.3" height="0.55" color="#2A75BB"
-                material="shader:flat; side:double"></a-plane>
+                material="shader:flat; side:double" visible="false"></a-plane>
 
 
             <!-- Vraag -->
-            <a-text id="question" position=" 0 0.45 0" align="center" width="2"></a-text>
+            <a-text id="question" position=" 0 0.45 0" align="center" width="2" visible="false"></a-text>
 
             <!-- Button A border -->
             <a-plane id="btnABorder" position="-0.4 -0.2 -0.02" width="0.72" height="0.30" color="#2A75BB"
-                material="shader:flat; side:double">
+                material="shader:flat; side:double" visible="false">
             </a-plane>
 
             <!-- Button A background -->
             <a-plane id="btnABg" position="-0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
-                material="shader:flat; side:double">
+                material="shader:flat; side:double" visible="false">
             </a-plane>
 
             <!-- Button B border -->
             <a-plane id="btnBBorder" position="0.4 -0.2 -0.02" width="0.72" height="0.30" color="#2A75BB"
-                material="shader:flat; side:double">
+                material="shader:flat; side:double" visible="false">
             </a-plane>
 
             <!-- Button B background -->
             <a-plane id="btnBBg" position="0.4 -0.2 -0.01" width="0.68" height="0.26" color="#FFFFFF"
-                material="shader:flat; side:double">
+                material="shader:flat; side:double" visible="false">
             </a-plane>
 
 
             <!-- Buttons -->
             <a-plane id="btnA" play-click-sound position="-0.4 -0.2 0" width="0.6" height="0.25"
-                material="transparent:true; opacity:0">
-                <a-text id="txtA" position="0 0 0.01" align="center" width="1.5" color="white"></a-text>
+                material="transparent:true; opacity:0" visible="false">
+                <a-text id="txtA" position="0 0 0.01" align="center" width="1.5" color="white" visible="false"></a-text>
             </a-plane>
             <a-plane id="btnB" play-click-sound position="0.4 -0.2 0" width="0.6" height="0.25"
-                material="transparent:true; opacity:0">
-                <a-text id="txtB" position="0 0 0.01" align="center" width="1.5" color="white"></a-text>
+                material="transparent:true; opacity:0" visible="false">
+                <a-text id="txtB" position="0 0 0.01" align="center" width="1.5" color="white" visible="false"></a-text>
             </a-plane>
 
             <!-- Story Pokémon placeholders -->
             <a-gltf-model id="story-luxray" src="#luxrayModel" position="1.1 -0.5 0.15" scale="0.08 0.08 0.08"
-                rotation="0 330 0" visible="true" animation__idle="property: position;
+                rotation="0 330 0" visible="false" animation__idle="property: position;
                      to: 1.1 -0.2 0.15;
                      dir: alternate;
                      dur: 2800;
