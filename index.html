@@ -662,9 +662,8 @@
 </head>
 
 <body>
-    <a-scene audio-unlock
-        mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
-        vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false">
+    <a-scene audio-unlock mindar-image="imageTargetSrc: assets/targets/targets-3.mind;" vr-mode-ui="enabled:false"
+        device-orientation-permission-ui="enabled:false">
         <a-camera></a-camera>
 
         <a-light type="ambient" intensity="1.2"></a-light>
@@ -693,12 +692,12 @@
             <a-entity id="startScreen">
 
                 <!-- Titel -->
-                <a-text id="startTitle" value="Which Pokémon are you?" position="0 0.6 0.1" align="center" width="3"
+                <a-text id="startTitle" value="Which Pokemon are you?" position="0 0.6 0.1" align="center" width="3"
                     color="#F7D02C" outline-color="#2A75BB" outline-width="2">
                 </a-text>
 
                 <!-- Subtekst -->
-                <a-text id="startSubtitle" value="Click on the pokéball to start!" position="0 0.35 0.1" align="center"
+                <a-text id="startSubtitle" value="Click on the pokeball to start!" position="0 0.35 0.1" align="center"
                     width="2.5" color="#000000">
                 </a-text>
 
